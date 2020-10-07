@@ -14,6 +14,58 @@ into a re-frame application.
 js/EventSource is generally moribund and does not support sending headers.
 Discussions generally reference js/fetch as a modern alternative but it does not natively process streams.
 
+## Usage
+
+### Clojurescript
+You can start a new connection using `sse-client`, which returns a map containing a no-arg abort function under the `:abort` key.
+
+```clj
+(require '[oxbow.core :as o])
+
+(let [{:keys [abort]} (o/sse-client {:uri "/events"
+                                     :on-event #(js/console.log "Got an event!" %)})]
+
+  ;; events are passed to the callback
+  ;; call abort to close the client
+
+  (:abort client))
+```
+
+### re-frame
+
+The re-frame bindings behave the same way, with the addition of `:id` which gives you a handle to abort with.
+
+```clj
+(require '[oxbow.re-frame :as o])
+(require '[re-frame.core :as rf])
+
+(rf/reg-event-db
+  ::on-event
+  (fn [db [_ {:keys [data] :as event}]]
+    (update db :events conj data)))
+
+
+(rf/dispatch [::o/sse-client {:id ::my-events
+                              :url "/events"
+                              :on-event [::on-event]}])
+
+;; events are passed to the callback
+;; call abort to close the client
+
+(rf/dispatch [::o/abort ::my-events])
+```
+
+## Options
+
+```clj
+{:on-event #(js/console.log "Message received: " %) ;; invoked for every event
+ :on-close #(js/console.log "Stream ended")         ;; invoked when the stream ends
+ :on-error #(js/console.warn "Error: " %)           ;; invoked on error
+ :value-parser identity                             ;; parses the values of the event
+ :fetch-options {:headers {"Authorization" "xyz"}}  ;; options passed to js/fetch, see https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/fetch
+ }
+```
+
 ## Development
 
 `cider-jack-in-cljs` and open the test page http://localhost:9500/figwheel-extra-main/auto-testing
