@@ -14,11 +14,13 @@
 
         (for [event new-events]
           (reduce (fn [acc kv]
-                    (let [[_ k v] (re-find #"(\w*):(.*)" kv)]
-                      (assoc acc
-                             (keyword (str/trim k))
-                             (when-not (str/blank? v)
-                               (value-parser v)))))
+                    (let [[_ k v] (re-find #"(\w*):\s?(.*)" kv)]
+                      (if-not (str/blank? k)
+                        (assoc acc
+                               (keyword (str/trim k))
+                               (when-not (str/blank? v)
+                                 (value-parser v)))
+                        acc)))
                   {}
                   (str/split-lines (str/trim event))))))))
 
