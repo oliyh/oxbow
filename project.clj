@@ -1,4 +1,4 @@
-(defproject oliyh/oxbow "0.1.0"
+(defproject oliyh/oxbow "0.1.1-SNAPSHOT"
   :description "A Server Sent Events (SSE) client for cljs based on js/fetch"
   :url "https://github.com/oliyh/oxbow"
   :license {:name "Eclipse Public License"
