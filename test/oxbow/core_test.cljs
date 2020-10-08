@@ -79,13 +79,15 @@
                  errors (atom [])
                  nan-error (js/Error. "Not a number!")]
              (@#'o/read-stream (reader-for ["0" "1" "abc" "3"])
-              (merge o/default-opts {:value-parser #(let [v (js/parseInt %)]
-                                                      (if (js/isNaN v)
-                                                        (throw nan-error)
-                                                        v))
+              (merge o/default-opts {:data-parser #(let [v (js/parseInt %)]
+                                                     (if (js/isNaN v)
+                                                       (throw nan-error)
+                                                       v))
                                      :on-event #(swap! events conj %)
                                      :on-error #(swap! errors conj %)
                                      :on-close (fn []
                                                  (is (= [0 1 3] (map :data @events)))
-                                                 (is (= [nan-error] @errors))
+                                                 (is (= "Failed parsing event" (.-message (first @errors))))
+                                                 (is (= {:event "data: abc\r\n\r\n"} (ex-data (first @errors))))
+                                                 (is (= nan-error (.-cause (first @errors))))
                                                  (done))}))))))

@@ -3,7 +3,7 @@
 
 (def sse-event-mask (re-pattern "(?s).+?\r\n\r\n"))
 
-(defn- event-parser [value-parser]
+(defn- event-parser [data-parser]
   (let [buffer (atom "")]
     (fn [chunk]
       (let [new-buffer (swap! buffer str chunk)
@@ -13,20 +13,23 @@
         (swap! buffer str/replace sse-event-mask "")
 
         (for [event new-events]
-          (reduce (fn [acc kv]
-                    (let [[_ k v] (re-find #"(\w*):\s?(.*)" kv)]
-                      (if-not (str/blank? k)
-                        (assoc acc
-                               (keyword (str/trim k))
-                               (when-not (str/blank? v)
-                                 (value-parser v)))
-                        acc)))
-                  {}
-                  (str/split-lines (str/trim event))))))))
+          (try (reduce (fn [acc kv]
+                         (let [[_ k v] (re-find #"(\w*):\s?(.*)" kv)
+                               k (when-not (str/blank? k) (keyword (str/trim k)))]
+                           (if k
+                             (assoc acc k (when-not (str/blank? v)
+                                            (if (= :data k)
+                                              (data-parser v)
+                                              v)))
+                             acc)))
+                       {}
+                       (str/split-lines (str/trim event)))
+               (catch js/Error e
+                 (throw (ex-info "Failed parsing event" {:event event} e)))))))))
 
-(defn- read-stream [reader {:keys [on-event on-close on-error value-parser] :as opts}]
+(defn- read-stream [reader {:keys [on-event on-close on-error data-parser] :as opts}]
   (let [decoder (js/TextDecoder.)
-        event-parser (event-parser value-parser)]
+        event-parser (event-parser data-parser)]
     (-> (.read reader)
         (.then (fn [result]
                  (if (.-done result)
@@ -44,7 +47,7 @@
   {:on-event #(js/console.log "Message received: " %)
    :on-close #(js/console.log "Stream ended")
    :on-error #(js/console.warn "Error: " %)
-   :value-parser identity})
+   :data-parser identity})
 
 (defn sse-client [{:keys [uri fetch-options] :as opts}]
   (let [aborted? (atom false)

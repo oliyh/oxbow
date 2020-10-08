@@ -58,11 +58,11 @@ The re-frame bindings behave the same way, with the addition of `:id` which give
 ## Options
 
 ```clj
-{:on-event #(js/console.log "Message received: " %) ;; invoked for every event
- :on-close #(js/console.log "Stream ended")         ;; invoked when the stream ends
- :on-error #(js/console.warn "Error: " %)           ;; invoked on error
- :value-parser identity                             ;; parses the values of the event
- :fetch-options {:headers {"Authorization" "xyz"}}  ;; options passed to js/fetch, see https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/fetch
+{:on-event      #(js/console.log "Message received: " %) ;; invoked for every event
+ :on-close      #(js/console.log "Stream ended")         ;; invoked when the stream ends
+ :on-error      #(js/console.warn "Error: " %)           ;; invoked on error
+ :data-parser   identity                                 ;; parses the `data` value of the event
+ :fetch-options {:headers {"Authorization" "xyz"}}       ;; options passed to js/fetch, see https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/fetch
  }
 ```
 
