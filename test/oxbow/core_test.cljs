@@ -91,3 +91,17 @@
                                                  (is (= {:event "data: abc\r\n\r\n"} (ex-data (first @errors))))
                                                  (is (= nan-error (.-cause (first @errors))))
                                                  (done))}))))))
+
+(deftest integration-test
+  (async done
+         (let [events (atom [])]
+           (o/sse-client {:uri "http://localhost:8888/events"
+                          :data-parser js/parseInt
+                          :on-event #(do (js/console.log "got an event" %)
+                                         (swap! events conj %))
+                          :on-error (fn [e]
+                                      (is false (str "Got an error: " e))
+                                      (done))
+                          :on-close (fn []
+                                      (is (= (range 11) (map :data @events)))
+                                      (done))}))))

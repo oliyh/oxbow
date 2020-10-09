@@ -11,10 +11,11 @@
                                        [com.bhauman/figwheel-main "0.2.11"]
                                        [org.clojure/tools.reader "1.2.2"]
                                        [cider/piggieback "0.4.1"]
-                                       [org.clojure/tools.nrepl "0.2.13"]]
+                                       [org.clojure/tools.nrepl "0.2.13"]
+                                       [io.pedestal/pedestal.service "0.5.8"]
+                                       [io.pedestal/pedestal.jetty "0.5.8"]]
                         :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
   :aliases {"fig"       ["trampoline" "run" "-m" "figwheel.main"]
             "fig:build" ["trampoline" "run" "-m" "figwheel.main" "-b" "dev" "-r"]
             "fig:min"   ["run" "-m" "figwheel.main" "-O" "advanced" "-bo" "dist"]
-            "fig:test"  ["run" "-m" "figwheel.main" "-co" "test.cljs.edn" "-m" oxbow.test-runner]
-            "test" ["do" ["clean"] ["test"] ["fig:test"]]})
+            "test"      ["do" ["clean"] ["run" "-m" "oxbow.runner"]]})

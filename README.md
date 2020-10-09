@@ -70,6 +70,8 @@ The re-frame bindings behave the same way, with the addition of `:id` which give
 
 `cider-jack-in-cljs` and open the test page http://localhost:9500/figwheel-extra-main/auto-testing
 
+You will need to also run `(oxbow.server-stub/start-server!)` for the integration tests.
+
 ## Build
 [![CircleCI](https://circleci.com/gh/oliyh/oxbow.svg?style=svg)](https://circleci.com/gh/oliyh/oxbow)
 
