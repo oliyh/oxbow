@@ -27,7 +27,7 @@
                           (update opts event-key dispatch-callback)
                           opts))
                       opts
-                      [:on-event :on-close :on-error])
+                      [:on-open :on-close :on-event :on-error])
          sse-client (core/sse-client opts)
          id (or id url)]
      {:db (assoc-in db [::oxbow :sse-client id] sse-client)})))

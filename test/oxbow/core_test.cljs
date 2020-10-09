@@ -92,11 +92,15 @@
                                                  (is (= nan-error (.-cause (first @errors))))
                                                  (done))}))))))
 
+;; =========================================
+;; integration tests
+
 (deftest integration-test
   (async done
          (let [events (atom [])]
            (o/sse-client {:uri "http://localhost:8888/events"
                           :data-parser js/parseInt
+                          :auto-reconnect? false
                           :on-event #(do (js/console.log "got an event" %)
                                          (swap! events conj %))
                           :on-error (fn [e]
@@ -105,3 +109,25 @@
                           :on-close (fn []
                                       (is (= (range 11) (map :data @events)))
                                       (done))}))))
+
+(deftest reconnection-test
+  (async done
+         (let [connections (atom 0)
+               events (atom [])
+               abort-fn (atom nil)
+               {:keys [abort]} (o/sse-client {:uri "http://localhost:8888/events"
+                                              :data-parser js/parseInt
+                                              :auto-reconnect? true
+                                              :reconnect-timeout 100
+                                              :on-event #(do (js/console.log "got an event" %)
+                                                             (swap! events conj %))
+                                              :on-error (fn [e]
+                                                          (is false (str "Got an error: " e))
+                                                          (done))
+                                              :on-open #(swap! connections inc)
+                                              :on-close (fn []
+                                                          (when (< 1 @connections)
+                                                            (is (= (concat (range 11) (range 11)) (map :data @events)))
+                                                            (@abort-fn)
+                                                            (done)))})]
+           (reset! abort-fn abort))))

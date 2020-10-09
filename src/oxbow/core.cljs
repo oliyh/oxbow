@@ -44,23 +44,42 @@
         (.catch on-error))))
 
 (def default-opts
-  {:on-event #(js/console.log "Message received: " %)
+  {:on-open  #(js/console.log "Stream connected" %)
    :on-close #(js/console.log "Stream ended")
+   :on-event #(js/console.log "Message received: " %)
    :on-error #(js/console.warn "Error: " %)
-   :data-parser identity})
+   :data-parser identity
+   :auto-reconnect? true
+   :reconnect-timeout 2000})
 
-(defn sse-client [{:keys [uri fetch-options] :as opts}]
-  (let [aborted? (atom false)
-        opts (-> (merge default-opts opts)
-                 (update :on-error (fn [on-error]
-                                     (fn [e]
-                                       (when-not @aborted?
-                                         (on-error e))))))
-        abort-controller (js/AbortController.)
-        abort-signal (.-signal abort-controller)]
-    (-> (js/fetch uri (clj->js (update fetch-options :signal #(or % abort-signal))))
+(defn sse-client [opts]
+  (let [abort-state (or (::abort-state opts)
+                        (let [controller (js/AbortController.)
+                              signal (.-signal controller)]
+                          (atom {:controller controller
+                                 :signal signal
+                                 :aborted? false})))
+        {:keys [auto-reconnect? reconnect-timeout uri fetch-options on-open]} (merge default-opts opts)
+        {:keys [on-error on-close] :as opts}
+        (-> opts
+            (update :on-error (fn [on-error]
+                                (fn [e]
+                                  (when-not (:aborted? @abort-state)
+                                    (on-error e)))))
+            (update :on-close (fn [on-close]
+                                (fn []
+                                  (when on-close (on-close))
+                                  (when (and auto-reconnect? (not (:aborted? @abort-state)))
+                                    (js/console.log "Reconnecting")
+                                    (js/setTimeout sse-client reconnect-timeout (assoc opts ::abort-state abort-state)))))))]
+    (-> (js/fetch uri (clj->js (assoc fetch-options :signal (:signal @abort-state))))
         (.then (fn [response]
+                 (when on-open (on-open response))
                  (read-stream (.. response -body getReader) opts)))
-        (.catch (:on-error opts)))
-    {:abort #(do (reset! aborted? true)
-                 (.abort abort-controller))}))
+        (.catch (fn [e]
+                  (js/console.log "Error on fetch" e)
+                  (when on-error (on-error e))
+                  (when on-close (on-close)))))
+    {:abort #(do (js/console.log "Aborting connection")
+                 (swap! abort-state assoc :aborted? true)
+                 (.abort (:controller @abort-state)))}))
