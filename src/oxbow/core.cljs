@@ -64,22 +64,22 @@
         (-> opts
             (update :on-error (fn [on-error]
                                 (fn [e]
-                                  (when-not (:aborted? @abort-state)
+                                  (when (and on-error (not (:aborted? @abort-state)))
                                     (on-error e)))))
             (update :on-close (fn [on-close]
                                 (fn []
                                   (when on-close (on-close))
                                   (when (and auto-reconnect? (not (:aborted? @abort-state)))
-                                    (js/console.log "Reconnecting")
+                                    (js/console.log "Reconnecting to" uri)
                                     (js/setTimeout sse-client reconnect-timeout (assoc opts ::abort-state abort-state)))))))]
     (-> (js/fetch uri (clj->js (assoc fetch-options :signal (:signal @abort-state))))
         (.then (fn [response]
                  (when on-open (on-open response))
                  (read-stream (.. response -body getReader) opts)))
         (.catch (fn [e]
-                  (js/console.log "Error on fetch" e)
                   (when on-error (on-error e))
                   (when on-close (on-close)))))
-    {:abort #(do (js/console.log "Aborting connection")
+    {:abort #(do (js/console.log "Aborting connection to" uri)
                  (swap! abort-state assoc :aborted? true)
-                 (.abort (:controller @abort-state)))}))
+                 (.abort (:controller @abort-state)))
+     :opts opts}))
