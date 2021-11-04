@@ -3,7 +3,7 @@
   :url "https://github.com/oliyh/oxbow"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies []
+  :dependencies [[missionary "b.23"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.1"]
                                        [org.clojure/clojurescript "1.10.764"]
                                        [re-frame "1.1.1"]]}

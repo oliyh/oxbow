@@ -10,7 +10,7 @@
 (rf/reg-event-fx
  ::abort
  (fn [{:keys [db]} [_ id-or-url]]
-   (when-let [{:keys [abort]} (get-in db [::oxbow :sse-client id-or-url])]
+   (when-let [abort (get-in db [::oxbow :sse-client id-or-url])]
      (merge {:db (update-in db [::oxbow :sse-client] dissoc id-or-url)}
             (when abort
               {::abort abort})))))

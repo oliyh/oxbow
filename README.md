@@ -22,13 +22,13 @@ You can start a new connection using `sse-client`, which returns a map containin
 ```clj
 (require '[oxbow.core :as o])
 
-(let [{:keys [abort]} (o/sse-client {:uri "/events"
-                                     :on-event #(js/console.log "Got an event!" %)})]
+(let [abort (o/sse-client {:uri "/events"
+                           :on-event #(js/console.log "Got an event!" %)})]
 
   ;; events are passed to the callback
   ;; call abort to close the client
 
-  (:abort client))
+  (abort))
 ```
 
 ### re-frame
