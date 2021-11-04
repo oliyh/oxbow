@@ -58,8 +58,7 @@
                     (map :chunk)
                     (sse-chunk-xform)
                     ;; a chunk may contain multiple events
-                    (mapcat #(str/split % #"\n\n"))
-                    (map #(do (js/console.log :chunk %) %))))))
+                    (mapcat #(str/split % #"\n\n"))))))
 
 (def default-opts
   {:on-open  #(js/console.log "Stream connected" %)
