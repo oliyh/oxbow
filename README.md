@@ -28,7 +28,7 @@ You can start a new connection using `sse-client`, which returns a map containin
   ;; events are passed to the callback
   ;; call abort to close the client
 
-  (:abort client))
+  (abort))
 ```
 
 ### re-frame
@@ -46,7 +46,7 @@ The re-frame bindings behave the same way, with the addition of `:id` which give
 
 
 (rf/dispatch [::o/sse-client {:id ::my-events
-                              :url "/events"
+                              :uri "/events"
                               :on-event [::on-event]}])
 
 ;; events are passed to the callback
