@@ -59,7 +59,7 @@
                           (atom {:controller controller
                                  :signal signal
                                  :aborted? false})))
-        {:keys [auto-reconnect? reconnect-timeout uri fetch-options on-open]} (merge default-opts opts)
+        {:keys [auto-reconnect? reconnect-timeout uri fetch-options on-open] :as opts} (merge default-opts opts)
         {:keys [on-error on-close] :as opts}
         (-> opts
             (update :on-error (fn [on-error]
