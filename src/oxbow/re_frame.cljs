@@ -17,7 +17,9 @@
 
 (defn- dispatch-callback [event-v]
   (when event-v
-    #(rf/dispatch (conj event-v %))))
+    (if (fn? event-v)
+      event-v
+      #(rf/dispatch (conj event-v %)))))
 
 (rf/reg-event-fx
  ::sse-client
