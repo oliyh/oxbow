@@ -14,6 +14,8 @@ into a re-frame application.
 js/EventSource is generally moribund and does not support sending headers.
 Discussions generally reference js/fetch as a modern alternative but it does not natively process streams.
 
+⚠️Chrome Devtools will _not_ show events under the EventSource tab for requests made by js/fetch. See: [Issue 1025893](https://bugs.chromium.org/p/chromium/issues/detail?id=1025893)
+
 ## Usage
 
 ### Clojurescript
