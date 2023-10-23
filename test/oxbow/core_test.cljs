@@ -57,7 +57,9 @@
   (let [encoder (js/TextEncoder.)]
     (.getReader (js/ReadableStream. #js {:start (fn [controller]
                                                   (doseq [x chunks]
-                                                    (.enqueue controller (.encode encoder x)))
+                                                    (let [bytes (cond (string? x)     (.encode encoder x)
+                                                                      (sequential? x) (js/Uint8Array.from x))]
+                                                      (.enqueue controller bytes)))
                                                   (.close controller))}))))
 
 (defn- reader-for [coll]
@@ -93,6 +95,13 @@
                                 {:data-parser #(js->clj (js/JSON.parse %) :keywordize-keys true)}
                                 [{:message "lorem"}
                                  {:message "ipsum"}]
+                                done))))
+  (testing "works correctly even when the chunk boundary breaks a multibyte UTF-8 code point in two parts"
+    (let [chunks [[100 97 116 97 58 32 196 133 196] [135 196 153 13 10 13 10]]]
+      (async done
+             (test-read-stream! (chunked-reader chunks)
+                                {}
+                                ["ąćę"]
                                 done)))))
 
 (deftest read-stream-errors-test
