@@ -1,45 +1,74 @@
 (ns oxbow.core
   (:require [clojure.string :as str]))
 
-(def sse-event-mask (re-pattern "(?s).+?\r\n\r\n"))
+(defn- concat-arrays [a b]
+  (let [len (+ (.-length a) (.-length b))]
+    (doto (new (.-constructor a) len)
+      (.set a 0)
+      (.set b (.-length a)))))
 
-(defn- event-parser [data-parser]
-  (let [buffer (atom "")]
-    (fn [chunk]
-      (let [new-buffer (swap! buffer str chunk)
-            new-events (re-seq sse-event-mask new-buffer)]
+(defn- find-delimiter
+  [array from]
+  (let [len (.-length array)]
+    (loop [from from]
+      (let [i (.indexOf array 13 from)]
+        (cond
+          (= i -1) nil
+          (> (+ i 4) len) nil
+          (and (= (aget array (+ i 1)) 10)
+               (= (aget array (+ i 2)) 13)
+               (= (aget array (+ i 3)) 10)) i
+          :else (recur (inc i)))))))
 
-        ;; clear read events from buffer
-        (swap! buffer str/replace sse-event-mask "")
+(defn- parse-kv-pairs [event data-parser]
+  (try
+    (reduce (fn [acc kv]
+              (let [[_ k v] (re-find #"(\w*):\s?(.*)" kv)
+                    k       (when-not (str/blank? k) (keyword (str/trim k)))]
+                (if k
+                  (assoc acc k (when-not (str/blank? v)
+                                    (if (= :data k)
+                                      (data-parser v)
+                                      v)))
+                  acc)))
+            {}
+            (str/split-lines event))
+    (catch js/Error e
+      {::error (ex-info "Failed parsing event" {:event event} e)})))
 
-        (for [event new-events]
-          (try (reduce (fn [acc kv]
-                         (let [[_ k v] (re-find #"(\w*):\s?(.*)" kv)
-                               k (when-not (str/blank? k) (keyword (str/trim k)))]
-                           (if k
-                             (assoc acc k (when-not (str/blank? v)
-                                            (if (= :data k)
-                                              (data-parser v)
-                                              v)))
-                             acc)))
-                       {}
-                       (str/split-lines (str/trim event)))
-               (catch js/Error e
-                 (throw (ex-info "Failed parsing event" {:event event} e)))))))))
+(defn- event-parser
+  ([data-parser] (event-parser (js/TextDecoder.) data-parser))
+  ([decoder data-parser]
+   (let [buffer (atom (js/Uint8Array.))]
+     (fn [chunk]
+       (let [new-buffer (swap! buffer concat-arrays chunk)]
+         (loop [events []
+                start  0
+                end    (find-delimiter new-buffer 0)]
+           (if end
+             (let [event  (.decode decoder (.subarray new-buffer start (+ end 4)))
+                   events (conj events (parse-kv-pairs event data-parser))
+                   start  (+ end 4)]
+               (recur events start (find-delimiter new-buffer start)))
+             (do
+               (when (pos? start)
+                 (swap! buffer (fn [buf] (.slice buf start))))
+               events))))))))
 
 (defn- read-stream [reader {:keys [on-event on-close on-error data-parser parse-event] :as opts}]
   (let [decoder (js/TextDecoder.)
-        parse-event (or parse-event (event-parser data-parser))]
+        parse-event (or parse-event (event-parser decoder data-parser))]
     (-> (.read reader)
         (.then (fn [result]
                  (if (.-done result)
                    (when on-close (on-close))
-                   (try (doseq [event (parse-event (.decode decoder (.-value result)))]
-                          (on-event event))
-                        (catch js/Error e
-                          (when on-error (on-error e)))
-                        (finally
-                          (read-stream reader (assoc opts :parse-event parse-event)))))))
+                   (try
+                     (doseq [event (parse-event (.-value result))]
+                       (if-let [error (::error event)]
+                         (when on-error (on-error error))
+                         (on-event event)))
+                     (finally
+                       (read-stream reader (assoc opts :parse-event parse-event)))))))
         (.catch on-error))))
 
 (def default-opts
