@@ -2,9 +2,12 @@
   (:require [oxbow.core :as o]
             [cljs.test :refer-macros [deftest testing is async]]))
 
+(defn- encode-string [s]
+  (.encode (js/TextEncoder.) s))
+
 (deftest event-parser-test
   (testing "can parse a full event in one go"
-    (let [event-parser (@#'o/event-parser identity)]
+    (let [event-parser (comp (@#'o/event-parser identity) encode-string)]
       (is (= [{:event "greeting"
                :data "Hello world"
                :id "abc-def-123"
@@ -15,7 +18,7 @@
                             retry: 123\r\n\r\n")))))
 
   (testing "can parse a full event in multiple chunks"
-    (let [event-parser (@#'o/event-parser identity)]
+    (let [event-parser (comp (@#'o/event-parser identity) encode-string)]
       (is (empty? (event-parser "event: greeting\r\n")))
       (is (empty? (event-parser "data: Hello world\r\n")))
       (is (empty? (event-parser "id: abc-def-123\r\n")))
@@ -26,11 +29,11 @@
              (event-parser "retry: 123\r\n\r\n")))))
 
   (testing "can parse a minimal event"
-    (let [event-parser (@#'o/event-parser identity)]
+    (let [event-parser (comp (@#'o/event-parser identity) encode-string)]
       (is (= [{:data "Hello world"}] (event-parser "data: Hello world\r\n\r\n")))))
 
   (testing "can parse multiple events"
-    (let [event-parser (@#'o/event-parser identity)]
+    (let [event-parser (comp (@#'o/event-parser identity) encode-string)]
       (is (= [{:event "greeting"
                :data "Hello world"
                :id "abc-def-123"
@@ -50,7 +53,7 @@
                             retry: 123\r\n\r\n")))))
 
   (testing "can accept custom event parser"
-    (let [event-parser (@#'o/event-parser #(str "prefix-" %))]
+    (let [event-parser (comp (@#'o/event-parser #(str "prefix-" %)) encode-string)]
       (is (= [{:data "prefix-Hello world"}] (event-parser "data: Hello world\r\n\r\n"))))))
 
 (defn- chunked-reader [chunks]
