@@ -53,12 +53,15 @@
     (let [event-parser (@#'o/event-parser #(str "prefix-" %))]
       (is (= [{:data "prefix-Hello world"}] (event-parser "data: Hello world\r\n\r\n"))))))
 
-(defn- reader-for [coll]
+(defn- chunked-reader [chunks]
   (let [encoder (js/TextEncoder.)]
     (.getReader (js/ReadableStream. #js {:start (fn [controller]
-                                                  (doseq [x coll]
-                                                    (.enqueue controller (.encode encoder (str "data: " x "\r\n\r\n"))))
+                                                  (doseq [x chunks]
+                                                    (.enqueue controller (.encode encoder x)))
                                                   (.close controller))}))))
+
+(defn- reader-for [coll]
+  (chunked-reader (map #(str "data: " % "\r\n\r\n") coll)))
 
 (deftest read-stream-events-test
   (testing "can read a stream and call handlers"
@@ -70,6 +73,21 @@
                 (merge o/default-opts {:on-event #(swap! events conj %)
                                        :on-close (fn []
                                                    (is (= (map str (range 10)) (map :data @events)))
+                                                   (done))})))))))
+
+(deftest broken-chunks-test
+  (testing "works correctly when the chunks are broken before the message boundary"
+    (let [chunks ["data: {\"message\":\"lo" "rem\"}\r\n\r\ndata: {\"message\":\"ipsum\"}\r\n\r\n"]]
+      (async done
+             (let [events (atom [])]
+               (@#'o/read-stream
+                (chunked-reader chunks)
+                (merge o/default-opts {:data-parser #(js->clj (js/JSON.parse %) :keywordize-keys true)
+                                       :on-event #(swap! events conj %)
+                                       :on-close (fn []
+                                                   (is (= [{:message "lorem"}
+                                                           {:message "ipsum"}]
+                                                          (map :data @events)))
                                                    (done))})))))))
 
 (deftest read-stream-errors-test
