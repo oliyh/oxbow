@@ -27,20 +27,19 @@
                (catch js/Error e
                  (throw (ex-info "Failed parsing event" {:event event} e)))))))))
 
-(defn- read-stream [reader {:keys [on-event on-close on-error data-parser] :as opts}]
+(defn- read-stream [reader {:keys [on-event on-close on-error data-parser parse-event] :as opts}]
   (let [decoder (js/TextDecoder.)
-        event-parser (event-parser data-parser)]
+        parse-event (or parse-event (event-parser data-parser))]
     (-> (.read reader)
         (.then (fn [result]
                  (if (.-done result)
                    (when on-close (on-close))
-
-                   (try (doseq [event (event-parser (.decode decoder (.-value result)))]
+                   (try (doseq [event (parse-event (.decode decoder (.-value result)))]
                           (on-event event))
                         (catch js/Error e
                           (when on-error (on-error e)))
                         (finally
-                          (read-stream reader opts))))))
+                          (read-stream reader (assoc opts :parse-event parse-event)))))))
         (.catch on-error))))
 
 (def default-opts
