@@ -63,32 +63,37 @@
 (defn- reader-for [coll]
   (chunked-reader (map #(str "data: " % "\r\n\r\n") coll)))
 
+(defn- test-read-stream!
+  "Tests whether read-stream invoked on a given reader will yield expected-data."
+  [reader extra-opts expected-data done]
+  (let [events (atom [])]
+    (@#'o/read-stream
+     reader
+     (merge o/default-opts
+            extra-opts
+            {:on-event #(swap! events conj %)
+             :on-close (fn []
+                         (is (= expected-data (map :data @events)))
+                         (done))}))))
+
 (deftest read-stream-events-test
   (testing "can read a stream and call handlers"
     (testing "for events"
       (async done
-             (let [events (atom [])]
-               (@#'o/read-stream
-                (reader-for (range 10))
-                (merge o/default-opts {:on-event #(swap! events conj %)
-                                       :on-close (fn []
-                                                   (is (= (map str (range 10)) (map :data @events)))
-                                                   (done))})))))))
+             (test-read-stream! (reader-for (range 10))
+                                {}
+                                (map str (range 10))
+                                done)))))
 
 (deftest broken-chunks-test
   (testing "works correctly when the chunks are broken before the message boundary"
     (let [chunks ["data: {\"message\":\"lo" "rem\"}\r\n\r\ndata: {\"message\":\"ipsum\"}\r\n\r\n"]]
       (async done
-             (let [events (atom [])]
-               (@#'o/read-stream
-                (chunked-reader chunks)
-                (merge o/default-opts {:data-parser #(js->clj (js/JSON.parse %) :keywordize-keys true)
-                                       :on-event #(swap! events conj %)
-                                       :on-close (fn []
-                                                   (is (= [{:message "lorem"}
-                                                           {:message "ipsum"}]
-                                                          (map :data @events)))
-                                                   (done))})))))))
+             (test-read-stream! (chunked-reader chunks)
+                                {:data-parser #(js->clj (js/JSON.parse %) :keywordize-keys true)}
+                                [{:message "lorem"}
+                                 {:message "ipsum"}]
+                                done)))))
 
 (deftest read-stream-errors-test
   (testing "errors are sent to handler and processing carries on"
