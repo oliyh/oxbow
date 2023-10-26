@@ -6,8 +6,8 @@
   :dependencies []
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.1"]
                                        [org.clojure/clojurescript "1.10.764"]
-                                       [re-frame "1.1.1"]]}
-             :dev      {:dependencies [[binaryage/devtools "1.0.2"]
+                                       [re-frame "1.3.0"]]}
+             :dev      {:dependencies [[binaryage/devtools "1.0.7"]
                                        [com.bhauman/figwheel-main "0.2.11"]
                                        [org.clojure/tools.reader "1.2.2"]
                                        [cider/piggieback "0.4.1"]
